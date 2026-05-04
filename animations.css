@@ -1,0 +1,127 @@
+/*
+ * ╔══════════════════════════════════════╗
+ * ║  ASA ATACADISTA — animations.css     ║
+ * ║  Versão : 1.0.0                      ║
+ * ║  Sistema de animações e reveals      ║
+ * ╚══════════════════════════════════════╝
+ */
+
+/* ─── REVEAL SYSTEM ─── */
+.reveal {
+  opacity: 0;
+  will-change: opacity, transform, filter;
+  transition:
+    opacity   var(--dur-reveal) var(--ease-out),
+    transform var(--dur-reveal) var(--ease-out),
+    filter    var(--dur-reveal) var(--ease-out);
+}
+
+.reveal--up {
+  transform: translateY(24px) scale(0.99);
+  filter: blur(4px);
+}
+
+.reveal--left {
+  transform: translateX(-30px);
+  filter: blur(3px);
+}
+
+.reveal--right {
+  transform: translateX(30px);
+  filter: blur(3px);
+}
+
+.reveal--scale {
+  transform: scale(0.94);
+  filter: blur(4px);
+}
+
+/* In-view state */
+.reveal.in-view {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* Stagger delays for child elements */
+.stagger > *:nth-child(1) { transition-delay: 0ms; }
+.stagger > *:nth-child(2) { transition-delay: 80ms; }
+.stagger > *:nth-child(3) { transition-delay: 160ms; }
+.stagger > *:nth-child(4) { transition-delay: 240ms; }
+.stagger > *:nth-child(5) { transition-delay: 320ms; }
+.stagger > *:nth-child(6) { transition-delay: 400ms; }
+
+/* ─── REDUCED MOTION ─── */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal--up,
+  .reveal--left,
+  .reveal--right,
+  .reveal--scale {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+
+  .ticker__track { animation: none; }
+  .hero__orb { animation: none; }
+  body::before { animation: none; }
+  .eyebrow__dot { animation: none; }
+  .map-visual__pin-ring { animation: none; }
+  .hero__scroll-hint { animation: none; }
+}
+
+/* ─── PAGE LOAD ANIMATION ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.93); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Hero initial load */
+.hero__content .eyebrow  { animation: fadeUp 0.7s var(--ease-out) 0.1s both; }
+.hero__content .hero__title { animation: fadeUp 0.7s var(--ease-out) 0.2s both; }
+.hero__content .hero__lead  { animation: fadeUp 0.7s var(--ease-out) 0.3s both; }
+.hero__content .hero__actions { animation: fadeUp 0.7s var(--ease-out) 0.4s both; }
+.hero__content .hero__stats   { animation: fadeUp 0.7s var(--ease-out) 0.5s both; }
+.hero__visual { animation: slideRight 0.8s var(--ease-out) 0.3s both; }
+.hero__scroll-hint { animation: fadeIn 1s var(--ease-out) 1.2s both; }
+
+/* Stagger cards in valor-card */
+.valores__grid .valor-card:nth-child(1) { animation-delay: 0ms; }
+.valores__grid .valor-card:nth-child(2) { animation-delay: 80ms; }
+.valores__grid .valor-card:nth-child(3) { animation-delay: 160ms; }
+.valores__grid .valor-card:nth-child(4) { animation-delay: 240ms; }
+.valores__grid .valor-card:nth-child(5) { animation-delay: 320ms; }
+
+/* ─── SHIMMER EFFECT (for future use) ─── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* ─── COUNTER FLASH ─── */
+@keyframes counterFlash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
