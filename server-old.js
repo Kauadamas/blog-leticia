@@ -1,7 +1,7 @@
 'use strict';
 
 const express    = require('express');
-const Database   = require('better-sqlite3');
+const Database   = require('./database');
 const multer     = require('multer');
 const path       = require('path');
 const fs         = require('fs');
@@ -10,39 +10,43 @@ const bcrypt     = require('bcryptjs');
 const cors       = require('cors');
 const slugify    = require('slugify');
 
-const app  = express();
+let app = express();
+let db = null;
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'troque-este-segredo-em-producao';
 
-/* ─── Middlewares ─── */
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+/* ─── Inicialização assíncrona ─── */
+async function initialize() {
+  db = await Database.initialize(path.join(__dirname, 'blog.db'));
 
-/* ─── Upload de imagens ─── */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext  = path.extname(file.originalname);
-    const name = Date.now() + '-' + Math.round(Math.random() * 1e6) + ext;
-    cb(null, name);
-  }
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Apenas imagens são permitidas'));
-  }
-});
+  /* ─── Middlewares ─── */
+  app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+  app.use(express.json());
+  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-/* ─── Banco de dados ─── */
-const db = new Database(path.join(__dirname, 'blog.db'));
+  /* ─── Upload de imagens ─── */
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(__dirname, 'uploads');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const ext  = path.extname(file.originalname);
+      const name = Date.now() + '-' + Math.round(Math.random() * 1e6) + ext;
+      cb(null, name);
+    }
+  });
+  const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) cb(null, true);
+      else cb(new Error('Apenas imagens são permitidas'));
+    }
+  });
+
+  /* ─── Banco de dados ─── */
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -324,18 +328,12 @@ function makeUniqueSlug(title) {
   return slug;
 }
 
-/* ─── Start ─── */
+  /* ─── Start ─── */
+  app.listen(PORT, () => console.log(`🚀 API rodando em http://localhost:${PORT}`));
+}
 
-
-/* ─── Frontend (rotas principais) ─── */
-app.use(express.static(__dirname));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "blog.html"));
+/* ─── Iniciar aplicação ─── */
+initialize().catch(err => {
+  console.error('Erro ao inicializar:', err);
+  process.exit(1);
 });
-
-app.get("/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
-});
-
-app.listen(PORT, () => console.log(`🚀 API rodando em http://localhost:${PORT}`));
