@@ -3,40 +3,25 @@ const fs = require('fs');
 const path = require('path');
 
 let SQL = null;
-let db = null;
 
 class DatabaseWrapper {
   static async initialize(dbPath) {
-    if (!SQL) {
-      SQL = await initSqlJs();
-    }
-
-    if (fs.existsSync(dbPath)) {
-      const data = fs.readFileSync(dbPath);
-      db = new SQL.Database(data);
-    } else {
-      db = new SQL.Database();
-    }
-
-    return new DatabaseWrapper(dbPath);
+    if (!SQL) SQL = await initSqlJs();
+    const dir = path.dirname(dbPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const db = fs.existsSync(dbPath)
+      ? new SQL.Database(fs.readFileSync(dbPath))
+      : new SQL.Database();
+    return new DatabaseWrapper(db, dbPath);
   }
 
-  constructor(dbPath) {
+  constructor(db, dbPath) {
+    this.db = db;
     this.dbPath = dbPath;
   }
 
   exec(sql) {
-    if (!db) throw new Error('Database não inicializado');
-    const statements = sql.split(';').filter(s => s.trim());
-    statements.forEach(statement => {
-      if (statement.trim()) {
-        try {
-          db.run(statement);
-        } catch (e) {
-          // Ignore se a tabela já existe
-        }
-      }
-    });
+    this.db.exec(sql);
     this.save();
     return this;
   }
@@ -45,64 +30,38 @@ class DatabaseWrapper {
     const self = this;
     return {
       run(...params) {
-        if (!db) throw new Error('Database não inicializado');
-        db.run(sql, params);
+        const before = self.db.getRowsModified();
+        self.db.run(sql, params);
+        const last = self.db.exec('SELECT last_insert_rowid() AS id')?.[0]?.values?.[0]?.[0] || 0;
+        const changes = Math.max(self.db.getRowsModified() - before, 0);
         self.save();
-        return { lastInsertRowid: 1, changes: 1 };
+        return { lastInsertRowid: last, changes };
       },
       get(...params) {
-        if (!db) throw new Error('Database não inicializado');
-        try {
-          const result = db.exec(sql, params);
-          return self._resultToRows(result)[0] || undefined;
-        } catch (e) {
-          return undefined;
-        }
+        return self._rows(sql, params)[0];
       },
       all(...params) {
-        if (!db) throw new Error('Database não inicializado');
-        try {
-          const result = db.exec(sql, params);
-          return self._resultToRows(result);
-        } catch (e) {
-          return [];
-        }
+        return self._rows(sql, params);
       }
     };
   }
 
-  _resultToRows(result) {
-    if (!result || !result[0] || !result[0].values) return [];
-    const columns = result[0].columns;
-    return result[0].values.map(row => {
-      const obj = {};
-      columns.forEach((col, i) => {
-        obj[col] = row[i];
-      });
-      return obj;
-    });
+  _rows(sql, params) {
+    const stmt = this.db.prepare(sql);
+    stmt.bind(params);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free();
+    return rows;
   }
 
   save() {
-    if (!this.dbPath || !db) return;
-    const dir = path.dirname(this.dbPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    try {
-      const data = db.export();
-      fs.writeFileSync(this.dbPath, Buffer.from(data));
-    } catch (err) {
-      console.error('Erro ao salvar banco de dados:', err);
-    }
+    fs.writeFileSync(this.dbPath, Buffer.from(this.db.export()));
   }
 
   close() {
-    if (db) {
-      this.save();
-      db.close();
-      db = null;
-    }
+    this.save();
+    this.db.close();
   }
 }
 

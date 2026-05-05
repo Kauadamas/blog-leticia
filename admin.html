@@ -465,9 +465,9 @@ tr:hover td{background:rgba(0,0,0,.015)}
 <script>
 'use strict';
 
-const API = window.location.hostname === 'localhost'
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:3001'
-  : '/api-url-em-producao'; // troque pela URL real em produção
+  : '';
 
 let token = localStorage.getItem('lr_token') || '';
 let currentPage = 1;
@@ -627,25 +627,17 @@ $('newPostBtn').addEventListener('click', () => {
 
 async function openEditor(id) {
   editingId = id;
-  const p = await api(`/api/posts/${allPosts.find(x => x.id === id)?.slug || id}`).catch(() => api(`/api/admin/posts`).then(d => d.posts.find(x => x.id === id)));
-  // fetch individualmente pelo id via admin
-  const post = allPosts.find(x => x.id === id);
-  if (!post) return;
+  const post = await api(`/api/admin/posts/${id}`);
   $('drawerTitle').textContent = 'Editar post';
   $('fTitle').value = post.title || '';
   $('fExcerpt').value = post.excerpt || '';
   $('fReadTime').value = post.read_time || 5;
   $('fFeatured').checked = !!post.featured;
   $('fStatus').value = post.status || 'draft';
-  // buscar conteúdo completo
-  try {
-    const full = await api(`/api/posts/${post.slug}`);
-    $('fContent').value = full.content || '';
-    $('fCoverUrl').value = full.cover_url || '';
-    setCoverPreview(full.cover_url || '');
-    const catOpt = categories.find(c => c.name === post.category_name);
-    $('fCategory').value = catOpt ? catOpt.id : '';
-  } catch {}
+  $('fContent').value = post.content || '';
+  $('fCoverUrl').value = post.cover_url || '';
+  setCoverPreview(post.cover_url || '');
+  $('fCategory').value = post.category_id || '';
   $('deletePostBtn').style.display = 'inline-flex';
   openDrawer();
 }
